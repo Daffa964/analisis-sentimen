@@ -15,7 +15,7 @@ class SawService
     /**
      * Calculate SAW Rankings for a given period and ward category ('regular' or 'vip').
      */
-    public function calculate(int $periodId, string $category): array
+    public function calculate(int $periodId, string $category, ?array $customWeights = null): array
     {
         $period = SurveyPeriod::findOrFail($periodId);
         $criteria = Criterion::orderBy('code')->get();
@@ -26,9 +26,13 @@ class SawService
 
         // 2. Fetch AHP Weights
         $weights = [];
-        $savedWeights = AhpWeight::all()->pluck('weight', 'criterion_id')->toArray();
-        foreach ($criteria as $c) {
-            $weights[$c->id] = $savedWeights[$c->id] ?? (1.0 / $criteria->count());
+        if ($customWeights !== null) {
+            $weights = $customWeights;
+        } else {
+            $savedWeights = AhpWeight::all()->pluck('weight', 'criterion_id')->toArray();
+            foreach ($criteria as $c) {
+                $weights[$c->id] = $savedWeights[$c->id] ?? (1.0 / $criteria->count());
+            }
         }
 
         // 3. Build Decision Matrix (X)
@@ -84,16 +88,11 @@ class SawService
             ];
         }
 
-        // 4. Find Max values for benefit criteria (all are benefit criteria)
+        // 4. Set Max values for benefit criteria using theoretical maximum from config
         $maxValues = [];
+        $theoreticalMax = (double)config('spk.max_theoretical_score', 5.0);
         foreach ($criteria as $c) {
-            $max = 0.0;
-            foreach (array_keys($activeWards) as $wardId) {
-                if ($rawMatrix[$wardId][$c->id] > $max) {
-                    $max = $rawMatrix[$wardId][$c->id];
-                }
-            }
-            $maxValues[$c->id] = $max ?: 1.0; // avoid division by zero
+            $maxValues[$c->id] = $theoreticalMax;
         }
 
         // 5. Normalize Matrix (R)
@@ -130,6 +129,8 @@ class SawService
             $item['rank'] = $index + 1;
         }
 
+        $rankings = $this->generateRecommendationsForWards($rankings);
+
         return [
             'has_data' => true,
             'wards' => $activeWards,
@@ -139,5 +140,58 @@ class SawService
             'weights' => $weights,
             'rankings' => $rankings
         ];
+    }
+
+    /**
+     * Generate automated recommendations for each ward based on criteria scores.
+     */
+    public function generateRecommendationsForWards(array $rankings): array
+    {
+        $criteria = \App\Models\Criterion::all()->keyBy('id');
+        
+        $recTexts = [
+            'C1' => 'Evaluasi alur loket pendaftaran dan berkas klaim BPJS/Umum untuk mempersingkat waktu tunggu penerimaan dan kepulangan pasien.',
+            'C2' => 'Optimalkan waktu respon penanganan medis dan respon tombol panggilan (nurse call button) di bangsal perawatan.',
+            'C3' => 'Lakukan pelatihan berkala terkait komunikasi terapeutik, keramahan, dan sikap empati untuk perawat dan staf administrasi.',
+            'C4' => 'Audit dan perbaiki fasilitas utama kamar pasien (tempat tidur, pendingin ruangan, TV, toilet) serta kelengkapan penunjang bangsal.',
+            'C5' => 'Tingkatkan frekuensi kontrol kebersihan kamar mandi pasien dan koridor bangsal serta higienitas seprai/kasur.',
+            'C6' => 'Lengkapi petunjuk arah (signage) di area bangsal dan perjelas media informasi mengenai aturan kunjungan serta jadwal dokter.'
+        ];
+
+        foreach ($rankings as &$item) {
+            $rawScores = $item['raw_scores'] ?? [];
+            $lowCriteria = [];
+            
+            foreach ($rawScores as $cId => $score) {
+                $criterion = $criteria->get($cId);
+                if ($criterion && $score < 3.8) {
+                    $lowCriteria[] = [
+                        'code' => $criterion->code,
+                        'name' => $criterion->name,
+                        'score' => $score,
+                        'rec' => $recTexts[$criterion->code] ?? 'Perlu dilakukan evaluasi kualitas pelayanan pada aspek ini.'
+                    ];
+                }
+            }
+
+            // Sort low criteria by score ascending (worst first)
+            usort($lowCriteria, function($a, $b) {
+                return $a['score'] <=> $b['score'];
+            });
+
+            $item['low_criteria'] = $lowCriteria;
+            
+            if (empty($lowCriteria)) {
+                $item['recommendation'] = 'Kualitas pelayanan secara umum sudah sangat baik. Pertahankan kinerja dan lakukan pemantauan berkala untuk menjaga kepuasan pasien.';
+            } else {
+                $recs = [];
+                foreach (array_slice($lowCriteria, 0, 2) as $low) { // Max 2 recommendations
+                    $recs[] = "Pada aspek **{$low['name']}** (skor " . round($low['score'], 2) . "/5.0): {$low['rec']}";
+                }
+                $item['recommendation'] = implode("\n\n", $recs);
+            }
+        }
+
+        return $rankings;
     }
 }

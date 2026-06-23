@@ -255,6 +255,32 @@
         </tbody>
     </table>
 
+    <!-- 4. Recommendations -->
+    <h4 style="margin-bottom: 8px; font-size: 12px; page-break-before: auto;">IV. REKOMENDASI TINDAKAN PERBAIKAN MUTU</h4>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th style="width: 150px; text-align: left;">Peringkat & Bangsal</th>
+                <th style="text-align: left;">Rekomendasi Tindakan</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($sawResults['rankings'] as $item)
+                <tr>
+                    <td class="text-left" style="font-weight: bold; vertical-align: top;">
+                        #{{ $item['rank'] }} - {{ $item['ward_name'] }}
+                        <div style="font-size: 10px; font-weight: normal; color: #555; margin-top: 4px;">
+                            Indeks: {{ number_format($item['preference_value'] * 100, 1) }}%
+                        </div>
+                    </td>
+                    <td class="text-left" style="line-height: 1.5; vertical-align: top;">
+                        {!! Str::markdown($item['recommendation']) !!}
+                    </td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+
     <!-- Keterangan Kriteria -->
     <div style="font-size: 10px; margin-bottom: 30px;">
         <strong>Keterangan Kriteria:</strong>

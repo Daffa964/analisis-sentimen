@@ -108,6 +108,32 @@
                     </div>
                 </x-filament::section>
 
+                <!-- Recommendation Engine -->
+                <x-filament::section>
+                    <x-slot name="heading">
+                        <span style="font-size: 16px; font-weight: 700;">Rekomendasi Tindakan Perbaikan (Automated Recommendation Engine)</span>
+                    </x-slot>
+                    <x-slot name="description">
+                        Saran taktis otomatis dari sistem berdasarkan aspek pelayanan yang memiliki penilaian paling rendah (di bawah 3.8/5.0).
+                    </x-slot>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
+                        @foreach($sawResults['rankings'] as $item)
+                            <div style="padding: 12px; border: 1px solid rgba(128,128,128,0.15); border-radius: 8px; background: rgba(128,128,128,0.01);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <strong style="font-size: 13px;">Peringkat #{{ $item['rank'] }} — {{ $item['ward_name'] }}</strong>
+                                    <span style="font-size: 11px; font-weight: 700; color: gray;">
+                                        Indeks Kepuasan: <strong style="color: var(--primary-600);">{{ number_format($item['preference_value'] * 100, 1) }}%</strong>
+                                    </span>
+                                </div>
+                                <div style="font-size: 12px; color: inherit; line-height: 1.5; white-space: pre-line;">
+                                    {!! Str::markdown($item['recommendation']) !!}
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </x-filament::section>
+
                 <!-- Step 1: Decision Matrix -->
                 <x-filament::section>
                     <x-slot name="heading">
