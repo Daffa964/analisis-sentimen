@@ -35,44 +35,40 @@ class SawService
             }
         }
 
-        // 3. Build Decision Matrix (X)
-        // x[ward_id][criterion_id] = average score of all respondents in that ward
+        // 3. Build Decision Matrix (X) using optimized single-query aggregation
         $rawMatrix = [];
-        $activeWards = []; // Only include wards that have respondents
+        $activeWards = [];
+
+        // Fetch all averages in a single grouped query for all criteria and wards in the period
+        $groupedAverages = DB::table('survey_answers')
+            ->join('respondents', 'survey_answers.respondent_id', '=', 'respondents.id')
+            ->join('questions', 'survey_answers.question_id', '=', 'questions.id')
+            ->where('respondents.survey_period_id', $periodId)
+            ->whereIn('respondents.ward_id', $wardIds)
+            ->groupBy('respondents.ward_id', 'questions.criterion_id')
+            ->select('respondents.ward_id', 'questions.criterion_id', DB::raw('AVG(survey_answers.score) as avg_score'))
+            ->get()
+            ->groupBy('ward_id');
+
+        // Check which wards have respondents in this period
+        $activeWardIds = DB::table('respondents')
+            ->where('survey_period_id', $periodId)
+            ->whereIn('ward_id', $wardIds)
+            ->distinct()
+            ->pluck('ward_id')
+            ->toArray();
 
         foreach ($wards as $ward) {
-            // Get respondents for this ward in the selected period
-            $respondents = Respondent::where('survey_period_id', $periodId)
-                ->where('ward_id', $ward->id)
-                ->get();
-
-            if ($respondents->isEmpty()) {
-                // If no respondents, skip ward in calculations or set to 0.
-                // We skip it from the ranking calculations to avoid division issues.
+            if (!in_array($ward->id, $activeWardIds)) {
                 continue;
             }
 
             $activeWards[$ward->id] = $ward;
-            
-            // For each criterion, calculate the average score of all questions in it
+            $wardAverages = $groupedAverages->get($ward->id)?->keyBy('criterion_id') ?? collect();
+
             foreach ($criteria as $c) {
-                // Find all questions linked to this criterion
-                $questionIds = $c->questions->pluck('id')->toArray();
-
-                if (empty($questionIds)) {
-                    $rawMatrix[$ward->id][$c->id] = 0.0;
-                    continue;
-                }
-
-                // Average score of survey answers for these questions by respondents of this ward
-                $avgScore = DB::table('survey_answers')
-                    ->join('respondents', 'survey_answers.respondent_id', '=', 'respondents.id')
-                    ->whereIn('survey_answers.question_id', $questionIds)
-                    ->where('respondents.ward_id', $ward->id)
-                    ->where('respondents.survey_period_id', $periodId)
-                    ->avg('survey_answers.score');
-
-                $rawMatrix[$ward->id][$c->id] = $avgScore ? (double)$avgScore : 0.0;
+                $item = $wardAverages->get($c->id);
+                $rawMatrix[$ward->id][$c->id] = $item ? (double)$item->avg_score : 0.0;
             }
         }
 
