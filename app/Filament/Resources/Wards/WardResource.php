@@ -20,6 +20,12 @@ class WardResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
+    protected static ?string $navigationLabel = 'Daftar Bangsal';
+    protected static ?string $pluralModelLabel = 'Daftar Bangsal';
+    protected static ?string $modelLabel = 'Bangsal';
+    protected static ?string $navigationGroup = 'Data Master';
+    protected static ?int $navigationSort = 2;
+
     public static function form(Schema $schema): Schema
     {
         return WardForm::configure($schema);

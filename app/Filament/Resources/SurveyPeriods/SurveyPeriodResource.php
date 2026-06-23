@@ -20,6 +20,12 @@ class SurveyPeriodResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
+    protected static ?string $navigationLabel = 'Periode Survei';
+    protected static ?string $pluralModelLabel = 'Periode Survei';
+    protected static ?string $modelLabel = 'Periode';
+    protected static ?string $navigationGroup = 'Data Kuesioner';
+    protected static ?int $navigationSort = 1;
+
     public static function form(Schema $schema): Schema
     {
         return SurveyPeriodForm::configure($schema);
