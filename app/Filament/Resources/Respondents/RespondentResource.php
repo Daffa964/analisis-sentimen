@@ -23,7 +23,7 @@ class RespondentResource extends Resource
     protected static ?string $navigationLabel = 'Data Responden';
     protected static ?string $pluralModelLabel = 'Data Responden';
     protected static ?string $modelLabel = 'Responden';
-    protected static ?string $navigationGroup = 'Data Kuesioner';
+    protected static \UnitEnum|string|null $navigationGroup = 'Data Kuesioner';
     protected static ?int $navigationSort = 2;
 
     public static function form(Schema $schema): Schema

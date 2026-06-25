@@ -23,7 +23,7 @@ class CriterionResource extends Resource
     protected static ?string $navigationLabel = 'Kriteria Pelayanan';
     protected static ?string $pluralModelLabel = 'Kriteria Pelayanan';
     protected static ?string $modelLabel = 'Kriteria';
-    protected static ?string $navigationGroup = 'Data Master';
+    protected static \UnitEnum|string|null $navigationGroup = 'Data Master';
     protected static ?int $navigationSort = 1;
 
     public static function form(Schema $schema): Schema
