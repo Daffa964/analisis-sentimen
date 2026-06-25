@@ -40,4 +40,17 @@ class ReportController extends Controller
             'datePrinted' => now()->translatedFormat('d F Y H:i'),
         ]);
     }
+
+    /**
+     * Print the survey flyer with QR Code.
+     */
+    public function printFlyer()
+    {
+        $googleFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSf5iie_PLj5DF7ogS1nrO8wUCT7yFs4XfMPIXdjo_ecJgKF5g/viewform?usp=dialog';
+
+        return view('reports.print-flyer', [
+            'googleFormUrl' => $googleFormUrl,
+            'qrCodeUrl' => 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . urlencode($googleFormUrl),
+        ]);
+    }
 }

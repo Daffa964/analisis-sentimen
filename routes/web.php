@@ -12,3 +12,4 @@ Route::get('/survey/{token}', function ($token) {
 })->name('survey.show');
 
 Route::get('/print-saw', [ReportController::class, 'print'])->name('report.print')->middleware('auth');
+Route::get('/print-flyer', [ReportController::class, 'printFlyer'])->name('report.flyer')->middleware('auth');
